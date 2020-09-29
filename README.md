@@ -2,3 +2,5 @@
 
 Um simulador da ploriferacão do vírus COVID-19
 Visualização .
+
+Está implementado Web-Workers
