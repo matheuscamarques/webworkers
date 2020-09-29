@@ -1,4 +1,4 @@
-var chartWorker = new Worker('./chartWorker.js');
+//var chartWorker = new Worker('./chartWorker.js');
 
 
 
