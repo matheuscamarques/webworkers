@@ -10,6 +10,10 @@
 
 */
 
+
+
+
+
 var quantidade = 1000;
 var Bola = [];
 var tam; //DIAMETRO
@@ -18,14 +22,14 @@ var PlotP = [];
 var plot = false;
 var ctx;
 
-
+var colisaoWorker;
 
 
 function setup() {
   PlotP.pop(0, 0);
-  frameRate(60);
+  frameRate(120);
   createCanvas(windowWidth, windowHeight);
-  frameRate(60);
+ 
   for (i = 0; i < quantidade; i++) {
     tam = random(5, 10);
     Bola[i] = new Ball(random(width - tam, tam),
@@ -39,6 +43,25 @@ function setup() {
   Bola[0].contagio = 1;
   Bola[149].contagio = 1;
   Bola[299].contagio = 1;
+
+  colisaoWorker = new Worker('./colisaoWorker.js');
+
+  colisaoWorker.onmessage = function(e) {
+    //console.log(JSON.parse(e.data));
+    var data = JSON.parse(e.data);
+    var balls = [];
+
+    for(let i=0;i<data.length;i++){
+        balls.push(new Ball(data[i].posx, data[i].posy, data[i].velx, data[i].vely, data[i].tam,data[i].contagio,data[i].verificado,data[i].R,data[i].G,data[i].B));
+    }
+    //data[i].__proto__  = Ball.prototype;
+    Bola = balls;
+
+  
+  //console.log('Message received from worker',e.data);
+  }
+
+  
 }
 
 function draw() {
@@ -48,7 +71,7 @@ function draw() {
 
 
   if (contcontagio == quantidade && plot == false) {
-    /* for(i=0;i<quantidade;i++)
+     for(i=0;i<Bola.length;i++)
      {
        Bola[i].contagio = 0;
        Bola[i].verificado = 0;
@@ -57,39 +80,35 @@ function draw() {
                  Bola[i].B = 0;
                  contcontagio = 0;
                  Bola[1].contagio = 1;
-     }*/
+     }
     for (i = 0; i < PlotP.length; i++) {
       console.log();
     }
     plot = true;
-
-
+    //chart.render();
   }
 
 
-
-
-  for (i = 0; i < quantidade; i++) {
-    Bola[i].desenha();
-    Bola[i].wallcollide();
+   for (i = 0; i < Bola.length; i++) {
+      Bola[i].desenha();
+      Bola[i].wallcollide();
 
     if (Bola[i].contagio == 1 && Bola[i].verificado == 0) {
-
       contcontagio++;
-
       x = millis();
       y = contcontagio;
       PlotP.push(new Points(x, y));
       Bola[i].verificado = 1;
-      //chart.render();
-
     }
 
   }
 
+ 
 
+  colisaoWorker.postMessage(JSON.stringify(Bola));
+  
 
-  colisao();
+  //colisao(Bola);
   //mmarques.1997@alunos.utfpr.edu.br
   var textsize = (300 * 15) / 300;
   strokeWeight(5);
@@ -105,110 +124,70 @@ function draw() {
   fill('green');
   text('Sadios: ' + (quantidade - contcontagio), 10, textsize * 6 + 2);
   fill('green');
-  //text("FPS " +  int(getFrameRate()), width-textsize*10, 20); 
+  text("FPS " +  int(getFrameRate()), width-textsize*10, 20); 
   noStroke();
 
-
+  //updateChart();
 
 }
 
-function colisao() {
-
-  var distancia_centros;
-  var x, y;
 
 
-  for (i = 0; i < quantidade; i++) {
-    for (j = i + 1; j < quantidade; j++) {
-      x = Bola[i].posx - Bola[j].posx;
-      y = Bola[i].posy - Bola[j].posy;
-      distancia_centros = x * x + y * y;
-      // alert(distancia_centros);
+class Ball {
+ 
+  /*
+  *     
+    contagio: 1
+    posx: 376.48069016026307
+    posy: 201.13559784199984
+    tam: 9.245151561895874
+    velx: -1.5949606381185122
+    vely: 1.9182884251893615
+    verificado: 1
+  * 
+  */
+      constructor(posx, posy, velx, vely, tam,Ccontagio=0,Cverificado=0,pR = 0,pG = 255,pB = 0){
+            this.contagio = Ccontagio;
+            this.verificado = Cverificado;
 
-      if (distancia_centros <= (Bola[i].tam / 2 * Bola[j].tam / 2) * 4) {
-        if (Bola[i].contagio == 1 || Bola[j].contagio == 1) {
-          Bola[i].R = 255;
-          Bola[i].G = 0;
-          Bola[i].B = 0;
+            this.posy = posy;
+            this.posx = posx;
 
-          Bola[j].R = 255;
-          Bola[j].G = 0;
-          Bola[j].B = 0;
+            this.velx = velx;
+            this.vely = vely;
 
-          Bola[i].contagio = 1;
-          Bola[j].contagio = 1;
-        }
+            this.tam = tam;
 
+            this.R = pR;
+            this.G = pG;
+            this.B = pB;
 
-        //Atualiza vel
-        var colisao = distancia_centros;
-
-        var pvx1 = ((Bola[i].velx * x) + (Bola[i].vely * y)) * x / colisao;
-        var pvy1 = ((Bola[i].velx * x) + (Bola[i].vely * y)) * y / colisao;
-        var pvx2 = ((Bola[j].velx * x) + (Bola[j].vely * y)) * x / colisao;
-        var pvy2 = ((Bola[j].velx * x) + (Bola[j].vely * y)) * y / colisao;
-
-        Bola[i].velx -= (pvx1 - pvx2);
-        Bola[i].vely -= (pvy1 - pvy2);
-
-        Bola[j].velx -= (pvx2 - pvx1);
-        Bola[j].vely -= (pvy2 - pvy1);
-
-        if (x != 0 && y != 0) {
-
-          Bola[i].posx += x / Math.abs(x);
-          Bola[i].posy += y / Math.abs(y);
-
-          Bola[j].posx -= x / Math.abs(x);
-          Bola[j].posy -= y / Math.abs(y);
-
-        }
-      }
-
-    }
-  }
-}
-
-function Ball(posx, posy, velx, vely, tam) {
-  var i, j;
-
-  this.contagio = 0;
-  this.verificado = 0;
-
-  this.posy = posy;
-  this.posx = posx;
-
-  this.velx = velx;
-  this.vely = vely;
-
-  this.tam = tam;
-
-  this.R = 0;
-  this.G = 255;
-  this.B = 0;
-
-  this.desenha = function () {
-
-    this.posx = this.posx + this.velx;
-    this.posy = this.posy + this.vely;
-
-    fill(this.R, this.G, this.B);
-    ellipse(this.posx, this.posy, this.tam);
-
-  }
-
-  this.wallcollide = function () {
-
-    if (this.posx + this.tam / 2 > width || this.posx - this.tam / 2 < 0) {
-      this.velx *= (-1);
-    }
-
-    if (this.posy + this.tam / 2 > height || this.posy - this.tam / 2 < 0) {
-      this.vely *= (-1);
-    }
+            
+      };
 
 
-  }
+    desenha = function () {
+
+              this.posx = this.posx + this.velx;
+              this.posy = this.posy + this.vely;
+
+              fill(this.R, this.G, this.B);
+              ellipse(this.posx, this.posy, this.tam);
+
+            }
+
+            wallcollide = function () {
+
+              if (this.posx + this.tam / 2 > width || this.posx - this.tam / 2 < 0) {
+                this.velx *= (-1);
+              }
+
+              if (this.posy + this.tam / 2 > height || this.posy - this.tam / 2 < 0) {
+                this.vely *= (-1);
+              }
+
+
+            }
 
 
 
